@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Tic-Tac-Toe</title>
+  <meta name="description" content="A simple tic-tac-toe game. Play the computer or a friend.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --navy: #1f2a44;
+      --navy-light: #2e3d63;
+      --text: #eef1f8;
+      --muted: #a8b2cc;
+      --line: #f4d35e;
+      --x: #ff6b6b;
+      --o: #7bdff2;
+      --font: "Rubik", system-ui, "Segoe UI", Arial, sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--navy);
+      color: var(--text);
+      font-family: var(--font);
+      display: flex;
+      justify-content: center;
+      padding: 2rem 1rem;
+    }
+
+    main { width: 100%; max-width: 26rem; }
+
+    h1 {
+      font-weight: 800;
+      font-size: 2.25rem;
+      letter-spacing: -0.02em;
+      margin: 0 0 1.25rem;
+    }
+
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .segmented {
+      display: inline-flex;
+      border: 2px solid var(--navy-light);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    .segmented[hidden] { display: none; }
+    .segmented button {
+      font: inherit;
+      font-weight: 500;
+      color: var(--muted);
+      background: transparent;
+      border: 0;
+      padding: 0.5rem 0.9rem;
+      cursor: pointer;
+    }
+    .segmented button[aria-pressed="true"] {
+      background: var(--navy-light);
+      color: var(--text);
+    }
+    .segmented button:hover { color: var(--text); }
+
+    button:focus-visible { outline: 3px solid var(--line); outline-offset: 2px; }
+
+    .scores {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0.75rem;
+      margin-bottom: 1.5rem;
+      text-align: center;
+    }
+    .scores div { border-bottom: 4px solid var(--navy-light); padding-bottom: 0.4rem; }
+    .scores .x { border-color: var(--x); }
+    .scores .o { border-color: var(--o); }
+    .scores strong { display: block; font-size: 1.75rem; font-weight: 800; line-height: 1.2; }
+    .scores span { font-size: 0.9rem; color: var(--muted); }
+
+    #status {
+      min-height: 1.75rem;
+      margin: 0 0 1rem;
+      font-size: 1.2rem;
+      font-weight: 500;
+    }
+
+    .board {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 6px;
+      background: var(--line);
+      aspect-ratio: 1;
+      width: 100%;
+    }
+    .cell {
+      background: var(--navy);
+      border: 0;
+      padding: 12%;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .cell:hover:not(:disabled) { background: #26335a; }
+    .cell:disabled { cursor: default; }
+    .cell:focus-visible { outline-offset: -5px; }
+    .cell.win { background: var(--navy-light); }
+    .board.finished .cell:not(.win) .mark { opacity: 0.45; }
+
+    .mark { width: 100%; height: 100%; }
+    .mark path, .mark circle {
+      fill: none;
+      stroke-width: 11;
+      stroke-linecap: round;
+      stroke-dasharray: 1;
+      stroke-dashoffset: 1;
+      animation: draw 0.3s ease-out forwards;
+    }
+    .mark.x { stroke: var(--x); }
+    .mark.o { stroke: var(--o); }
+    @keyframes draw { to { stroke-dashoffset: 0; } }
+
+    .again {
+      margin-top: 1.5rem;
+      font: inherit;
+      font-weight: 700;
+      color: var(--navy);
+      background: var(--line);
+      border: 0;
+      border-radius: 8px;
+      padding: 0.75rem 1.4rem;
+      cursor: pointer;
+    }
+    .again:hover { background: #fff; }
+
+    @media (prefers-reduced-motion: reduce) {
+      .mark path, .mark circle { animation: none; stroke-dashoffset: 0; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Tic-Tac-Toe</h1>
+
+    <div class="controls">
+      <div class="segmented" role="group" aria-label="Game mode">
+        <button type="button" id="mode-cpu" aria-pressed="true">vs Computer</button>
+        <button type="button" id="mode-two" aria-pressed="false">2 Players</button>
+      </div>
+      <div class="segmented" role="group" aria-label="Computer level" id="level-group">
+        <button type="button" id="level-easy" aria-pressed="false">Easy</button>
+        <button type="button" id="level-hard" aria-pressed="true">Unbeatable</button>
+      </div>
+    </div>
+
+    <div class="scores">
+      <div class="x"><strong id="score-x">0</strong><span id="label-x">You (X)</span></div>
+      <div><strong id="score-d">0</strong><span>Draws</span></div>
+      <div class="o"><strong id="score-o">0</strong><span id="label-o">Computer (O)</span></div>
+    </div>
+
+    <p id="status" role="status" aria-live="polite"></p>
+
+    <div class="board" id="board" aria-label="Tic-tac-toe board"></div>
+
+    <button type="button" class="again" id="again">New round</button>
+  </main>
+
+  <script>
+    // ---------- Game state ----------
+    const WIN_LINES = [
+      [0, 1, 2], [3, 4, 5], [6, 7, 8],
+      [0, 3, 6], [1, 4, 7], [2, 5, 8],
+      [0, 4, 8], [2, 4, 6]
+    ];
+
+    const state = {
+      board: Array(9).fill(null),
+      turn: "X",
+      starter: "X",
+      over: false,
+      thinking: false,
+      mode: "cpu",      // "cpu" or "two"
+      level: "hard",    // "easy" or "hard"
+      scores: { X: 0, O: 0, D: 0 }
+    };
+
+    // ---------- Game logic ----------
+    function getWinner(board) {
+      for (const line of WIN_LINES) {
+        const [a, b, c] = line;
+        if (board[a] && board[a] === board[b] && board[a] === board[c]) {
+          return { player: board[a], line };
+        }
+      }
+      return null;
+    }
+
+    function emptyCells(board) {
+      return board.map((v, i) => (v ? null : i)).filter(i => i !== null);
+    }
+
+    // ---------- Computer opponent ----------
+    // Minimax: O (computer) tries to maximize, X (human) tries to minimize.
+    function minimax(board, player, depth) {
+      const win = getWinner(board);
+      if (win) return win.player === "O" ? 10 - depth : depth - 10;
+      const moves = emptyCells(board);
+      if (moves.length === 0) return 0;
+
+      let best = player === "O" ? -Infinity : Infinity;
+      for (const i of moves) {
+        board[i] = player;
+        const score = minimax(board, player === "O" ? "X" : "O", depth + 1);
+        board[i] = null;
+        best = player === "O" ? Math.max(best, score) : Math.min(best, score);
+      }
+      return best;
+    }
+
+    function computerMove() {
+      const moves = emptyCells(state.board);
+      if (state.level === "easy") {
+        return moves[Math.floor(Math.random() * moves.length)];
+      }
+      let bestScore = -Infinity;
+      let bestMoves = [];
+      for (const i of moves) {
+        state.board[i] = "O";
+        const score = minimax(state.board, "X", 1);
+        state.board[i] = null;
+        if (score > bestScore) { bestScore = score; bestMoves = [i]; }
+        else if (score === bestScore) { bestMoves.push(i); }
+      }
+      return bestMoves[Math.floor(Math.random() * bestMoves.length)];
+    }
+
+    // ---------- UI ----------
+    const boardEl = document.getElementById("board");
+    const statusEl = document.getElementById("status");
+    const cells = [];
+
+    for (let i = 0; i < 9; i++) {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "cell";
+      btn.addEventListener("click", () => onCellClick(i));
+      boardEl.appendChild(btn);
+      cells.push(btn);
+    }
+
+    function markSvg(player) {
+      if (player === "X") {
+        return '<svg class="mark x" viewBox="0 0 100 100" aria-hidden="true">' +
+          '<path pathLength="1" d="M22 22 L78 78"/><path pathLength="1" d="M78 22 L22 78"/></svg>';
+      }
+      return '<svg class="mark o" viewBox="0 0 100 100" aria-hidden="true">' +
+        '<circle pathLength="1" cx="50" cy="50" r="28"/></svg>';
+    }
+
+    function playerName(player) {
+      if (state.mode === "cpu") return player === "X" ? "You" : "The computer";
+      return "Player " + player;
+    }
+
+    function render(winLine) {
+      cells.forEach((btn, i) => {
+        const value = state.board[i];
+        const row = Math.floor(i / 3) + 1;
+        const col = (i % 3) + 1;
+        const wasEmpty = btn.dataset.value === undefined || btn.dataset.value === "";
+        if ((btn.dataset.value || "") !== (value || "")) {
+          btn.innerHTML = value ? markSvg(value) : "";
+          btn.dataset.value = value || "";
+        }
+        btn.setAttribute("aria-label",
+          "Row " + row + ", column " + col + ", " + (value ? value : "empty"));
+        btn.disabled = !!value || state.over || state.thinking ||
+          (state.mode === "cpu" && state.turn === "O");
+        btn.classList.toggle("win", !!winLine && winLine.includes(i));
+      });
+      boardEl.classList.toggle("finished", state.over && !!winLine);
+
+      document.getElementById("score-x").textContent = state.scores.X;
+      document.getElementById("score-o").textContent = state.scores.O;
+      document.getElementById("score-d").textContent = state.scores.D;
+      document.getElementById("label-x").textContent = state.mode === "cpu" ? "You (X)" : "Player X";
+      document.getElementById("label-o").textContent = state.mode === "cpu" ? "Computer (O)" : "Player O";
+
+      document.getElementById("mode-cpu").setAttribute("aria-pressed", state.mode === "cpu");
+      document.getElementById("mode-two").setAttribute("aria-pressed", state.mode === "two");
+      document.getElementById("level-easy").setAttribute("aria-pressed", state.level === "easy");
+      document.getElementById("level-hard").setAttribute("aria-pressed", state.level === "hard");
+      document.getElementById("level-group").hidden = state.mode !== "cpu";
+    }
+
+    function setStatus(text) { statusEl.textContent = text; }
+
+    function finishIfDone() {
+      const win = getWinner(state.board);
+      if (win) {
+        state.over = true;
+        state.scores[win.player]++;
+        setStatus(playerName(win.player) + (win.player === "X" && state.mode === "cpu" ? " win!" : " wins!"));
+        render(win.line);
+        return true;
+      }
+      if (emptyCells(state.board).length === 0) {
+        state.over = true;
+        state.scores.D++;
+        setStatus("It's a draw.");
+        render();
+        return true;
+      }
+      return false;
+    }
+
+    function announceTurn() {
+      if (state.mode === "cpu") {
+        setStatus(state.turn === "X" ? "Your turn (X)" : "The computer is thinking…");
+      } else {
+        setStatus("Player " + state.turn + "'s turn");
+      }
+    }
+
+    function nextTurn() {
+      state.turn = state.turn === "X" ? "O" : "X";
+      announceTurn();
+      render();
+      if (state.mode === "cpu" && state.turn === "O") {
+        state.thinking = true;
+        render();
+        setTimeout(() => {
+          state.thinking = false;
+          const move = computerMove();
+          place(move);
+        }, 500);
+      }
+    }
+
+    function place(i) {
+      if (state.over || state.board[i]) return;
+      state.board[i] = state.turn;
+      render();
+      if (!finishIfDone()) nextTurn();
+    }
+
+    function onCellClick(i) {
+      if (state.thinking || (state.mode === "cpu" && state.turn === "O")) return;
+      place(i);
+    }
+
+    function newRound(flipStarter) {
+      if (flipStarter) state.starter = state.starter === "X" ? "O" : "X";
+      state.board = Array(9).fill(null);
+      state.turn = state.starter;
+      state.over = false;
+      state.thinking = false;
+      announceTurn();
+      render();
+      if (state.mode === "cpu" && state.turn === "O") {
+        state.thinking = true;
+        render();
+        setTimeout(() => {
+          state.thinking = false;
+          place(computerMove());
+        }, 500);
+      }
+    }
+
+    function resetAll() {
+      state.scores = { X: 0, O: 0, D: 0 };
+      state.starter = "X";
+      newRound(false);
+    }
+
+    // ---------- Controls ----------
+    document.getElementById("again").addEventListener("click", () => newRound(state.over));
+    document.getElementById("mode-cpu").addEventListener("click", () => { state.mode = "cpu"; resetAll(); });
+    document.getElementById("mode-two").addEventListener("click", () => { state.mode = "two"; resetAll(); });
+    document.getElementById("level-easy").addEventListener("click", () => { state.level = "easy"; resetAll(); });
+    document.getElementById("level-hard").addEventListener("click", () => { state.level = "hard"; resetAll(); });
+
+    resetAll();
+  </script>
+</body>
+</html>
